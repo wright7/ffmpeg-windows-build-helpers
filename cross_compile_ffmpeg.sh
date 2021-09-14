@@ -431,7 +431,7 @@ do_git_checkout() {
     desired_branch="origin/master"
   fi
   echo "doing git checkout $desired_branch"
-  git checkout -c 'advice.detachedHead=false' "$desired_branch" || (git_hard_reset && git checkout -c 'advice.detachedHead=false' "$desired_branch") || (git reset --hard "$desired_branch") || exit 1 # can't just use merge -f because might "think" patch files already applied when their changes have been lost, etc...
+  git checkout "$desired_branch" || (git_hard_reset && git checkout "$desired_branch") || (git reset --hard "$desired_branch") || exit 1 # can't just use merge -f because might "think" patch files already applied when their changes have been lost, etc...
   # vmaf on 16.04 needed that weird reset --hard? huh?
   if git show-ref --verify --quiet "refs/remotes/origin/$desired_branch"; then # $desired_branch is actually a branch, not a tag or commit
     git merge "origin/$desired_branch" || exit 1 # get incoming changes to a branch
@@ -2313,6 +2313,7 @@ build_ffmpeg() {
 
   cd $output_dir
     apply_patch file://$patch_dir/frei0r_load-shared-libraries-dynamically.diff
+    apply_patch file://$patch_dir/ffmpeg-windres-fix.patch
     if [ "$bits_target" != "32" ]; then
 
       # SVT-VP9
@@ -2353,11 +2354,11 @@ build_ffmpeg() {
     fi
     config_options="$init_options --enable-libcaca --enable-gray --enable-libtesseract --enable-fontconfig --enable-gmp --enable-gnutls --enable-libass --enable-libbluray --enable-libbs2b --enable-libflite --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libilbc --enable-libmodplug --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopus --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvo-amrwbenc --enable-libvorbis --enable-libwebp --enable-libzimg --enable-libzvbi --enable-libmysofa --enable-libopenjpeg  --enable-libopenh264 --enable-liblensfun  --enable-libvmaf --enable-libsrt --enable-libxml2 --enable-opengl --enable-libdav1d --enable-cuda-llvm"
 
-    if [ "$bits_target" != "32" ]; then
-      config_options+=" --enable-libsvthevc"
-      config_options+=" --enable-libsvtav1"
-      # config_options+=" --enable-libsvtvp9"
-    fi
+    #if [ "$bits_target" != "32" ]; then
+    #  config_options+=" --enable-libsvthevc"
+    #  config_options+=" --enable-libsvtav1"
+    #  # config_options+=" --enable-libsvtvp9"
+    #fi
 
     #aom must be disabled to use SVT-AV1
     config_options+=" --enable-libaom"
@@ -2429,6 +2430,17 @@ build_ffmpeg() {
     fi
     config_options+=" $extra_postpend_configure_options"
 
+    #############################################
+    # !!! OVERWRITING FFMPEG CONFIG OPTIONS !!! #
+    #############################################
+
+    config_options="$(juvo_config_options "$config_options")"
+    config_options="$(disable_problematic_config_options "$config_options")"
+
+    #############################################
+    # !!! --------------------------------- !!! #
+    #############################################
+
     do_configure "$config_options"
     rm -f */*.a */*.dll *.exe # just in case some dependency library has changed, force it to re-link even if the ffmpeg source hasn't changed...
     rm -f already_ran_make*
@@ -2492,6 +2504,22 @@ build_ffmpeg() {
   else
     cd "$work_dir"
   fi
+}
+
+disable_problematic_config_options() {
+  remove=("--enable-libdav1d")
+  substitute=""
+
+  local string="$1"
+  for d in ${remove[@]}; do
+    string="${string//$d/$substitute}"
+  done
+  echo "$string"
+}
+
+juvo_config_options() {
+	source "$top_dir/ffmpeg_config_flags.sh" "$top_dir" "$(realpath $ffmpeg_source_dir)"
+  echo $CONFIGURE_OPTIONS
 }
 
 build_lsw() {
