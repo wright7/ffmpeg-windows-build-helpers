@@ -35,7 +35,7 @@ AUTO_INSTALL_REQUIRED_PACKAGES="n"
 if [ "$AUTO_INSTALL_REQUIRED_PACKAGES" == "y" ]; then
   sudo apt update
   sudo apt upgrade -y
-  sudo apt-get install subversion ragel curl texinfo g++ bison flex cvs yasm automake libtool autoconf gcc cmake git make pkg-config zlib1g-dev unzip pax nasm gperf autogen bzip2 autoconf-archive p7zip-full meson clang python3-distutils upx-ucl -y
+  sudo apt-get install subversion ragel curl texinfo g++ bison flex cvs yasm automake libtool autoconf gcc cmake git make pkg-config zlib1g-dev unzip pax nasm gperf autogen bzip2 autoconf-archive p7zip-full meson clang python3-distutils python-is-python3 upx-ucl -y
 fi
 
 # required for WSL
@@ -55,7 +55,7 @@ fi
 
 #build
 echo $ARCH | ./cross_compile_ffmpeg.sh --build-ffmpeg-static=n --build-ffmpeg-shared=y --disable-nonfree=y --prefer-stable=y --build-dependencies=$BUILD_DEPS --ffmpeg-source-dir="$SRC"
-if [$? -ne 0 ]; then
+if [ $? -ne 0 ]; then
   exit 1
 fi
 
